@@ -196,7 +196,7 @@ async function runWithHedge(args) {
     dystopiarouterContract,
     WALLET_ADDRESS
   );
-  //await errCatcher(depositLpAndStake, [wallet]);
+  await errCatcher(depositLpAndStake, [wallet]);
   console.log("LPtokensStaked");
 
   summary = await getUserSummary(WALLET_ADDRESS);
@@ -221,7 +221,7 @@ async function runWithHedge(args) {
 
     if (Number(summary.healthFactor) - healthFactor > rebalancingDelta) {
       //надо взять еще с AAVE
-      //await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
+      await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
       tokensAmounts = await calcLPTokensValue(
         PoolToken,
         dystopiarouterContract,
@@ -273,7 +273,7 @@ async function runWithHedge(args) {
     }
     if (healthFactor - Number(summary.healthFactor) >= rebalancingDelta) {
       // Надо докинуть на AAVE
-      //await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
+      await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
       tokensAmounts = await calcLPTokensValue(
         PoolToken,
         dystopiarouterContract,
@@ -325,31 +325,31 @@ async function runWithHedge(args) {
     }
     if (Date.now() >= startTimestamp + 1000 * 60 * interval) {
       console.log("it's time to withdraw");
-      // await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
-      // console.log("LP unstaked");
-      // let amountDyst = await getTokenBalanceWallet(DystAddress, WALLET_ADDRESS);
-      // let amountPen = await getTokenBalanceWallet(PenAddress, WALLET_ADDRESS);
-      // await swapToken1ToToken2(
-      //   DystAddress,
-      //   UsdcAddress,
-      //   amountDyst,
-      //   wallet,
-      //   WALLET_ADDRESS
-      // );
-      // await swapToken1ToToken2(
-      //   PenAddress,
-      //   UsdcAddress,
-      //   amountPen,
-      //   wallet,
-      //   WALLET_ADDRESS
-      // );
-      // console.log("ShitCoinsSwapped");
-      //await claimFeesReward(wallet);
+      await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
+      console.log("LP unstaked");
+      let amountDyst = await getTokenBalanceWallet(DystAddress, WALLET_ADDRESS);
+      let amountPen = await getTokenBalanceWallet(PenAddress, WALLET_ADDRESS);
+      await swapToken1ToToken2(
+        DystAddress,
+        UsdcAddress,
+        amountDyst,
+        wallet,
+        WALLET_ADDRESS
+      );
+      await swapToken1ToToken2(
+        PenAddress,
+        UsdcAddress,
+        amountPen,
+        wallet,
+        WALLET_ADDRESS
+      );
+      console.log("ShitCoinsSwapped");
+      await claimFeesReward(wallet);
       startTimestamp = Date.now();
-      //await swapAndAdd(WALLET_ADDRESS, WALLET_SECRET);
+      await swapAndAdd(WALLET_ADDRESS, WALLET_SECRET);
       console.log("tokensSwapped");
 
-      //await errCatcher(depositLpAndStake, [wallet]);
+      await errCatcher(depositLpAndStake, [wallet]);
       console.log("LPtokensStaked");
     }
     tokensAmounts = await calcLPTokensValue(
