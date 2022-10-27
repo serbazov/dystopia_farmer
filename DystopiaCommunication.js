@@ -348,7 +348,7 @@ async function removeLiquidityFromPool(WALLET_ADDRESS, WALLET_SECRET) {
   //claimDYSTReward(wallet);
   //claimFeesReward(wallet);
 
-  //approveToken(PoolToken, dystopiarouterContract, wallet);
+  //approveoken(PoolToken, dystopiarouterContract, wallet);
   const liquidity = await dystopiarouterContract.quoteAddLiquidity(
     Tocken1,
     Tocken2,
@@ -388,4 +388,5 @@ module.exports = {
   swapToken1ToToken2,
   swapInTargetProportion,
   calcLPTokensValue,
+  removeLiquidityFromPool,
 };

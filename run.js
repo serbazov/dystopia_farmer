@@ -8,11 +8,12 @@ const DystopiaRouterABI = require("./abi/RouterABI.json");
 const { GoogleSpreadsheet } = require("google-spreadsheet");
 const {
   swapAndAdd,
-  removeLiquidityFromPool,
   claimFeesReward,
   swapToken1ToToken2,
   swapInTargetProportion,
   calcLPTokensValue,
+  removeLiquidityFromPool,
+  addAllLiquidity,
 } = require("./DystopiaCommunication");
 const {
   depositLpAndStake,
@@ -25,7 +26,14 @@ const {
   repay,
   getUserSummary,
 } = require("./AAVEcontractCommunication");
-const { getTokenBalanceWallet, getCurrentPrice } = require("./Utils");
+const AAVEpoolAddress =
+  "0x794a61358D6845594F94dc1DB02A252b5b4814aD".toLowerCase();
+const {
+  getTokenBalanceWallet,
+  getCurrentPrice,
+  approveToken,
+} = require("./Utils");
+const MaticAddress = "0x0000000000000000000000000000000000001010".toLowerCase();
 const PenAddress = "0x9008D70A5282a936552593f410AbcBcE2F891A97".toLowerCase();
 const DystAddress = "0x39aB6574c289c3Ae4d88500eEc792AB5B947A5Eb".toLowerCase();
 const UsdcAddress = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174".toLowerCase(); //Usdc
@@ -36,6 +44,7 @@ const DystopiaRouterAddress =
   "0xbE75Dd16D029c6B32B7aD57A0FD9C1c20Dd2862e".toLowerCase();
 const WmaticDecimals = 18;
 const PoolToken = "0x60c088234180b36edcec7aa8aa23912bb6bed114".toLowerCase(); //Usdc/Wmatic pool token
+const PenroseProxy = "0xc9Ae7Dac956f82074437C6D40f67D6a5ABf3E34b".toLowerCase();
 const doc = new GoogleSpreadsheet(
   "1MFJqjSj6DAdhLygLoxp39aFm8iVshRyWnPm9W9IWjdo"
 );
@@ -99,8 +108,23 @@ async function runNoHedge(args) {
     console.log("ShitCoinsSwapped");
   }
 }
+
+async function allApproves(args) {
+  const WALLET_SECRET = args[0];
+  const wallet = new ethers.Wallet(WALLET_SECRET, web3Provider);
+  await approveToken(UsdcAddress, AAVEpoolAddress, wallet);
+  await approveToken(WmaticAddress, AAVEpoolAddress, wallet);
+  await approveToken(PoolToken, DystopiaRouterAddress, wallet);
+  await approveToken(UsdcAddress, DystopiaRouterAddress, wallet);
+  await approveToken(WmaticAddress, DystopiaRouterAddress, wallet);
+  await approveToken(PenAddress, DystopiaRouterAddress, wallet);
+  await approveToken(DystAddress, DystopiaRouterAddress, wallet);
+  await approveToken(PoolToken, PenroseProxy, wallet);
+}
+
 async function runWithHedge(args) {
   // args : [delta_rebalance, health_factor, time_interval, Wallet_Address, Wallet_Secret]
+
   console.log("start");
   const rebalancingDelta = args[0];
   const healthFactor = args[1];
@@ -134,27 +158,32 @@ async function runWithHedge(args) {
       "Total",
     ],
   });
-  const fullAmount =
-    UsdcAmount / 10 ** UsdcDecimals +
-    (price * WmaticAmount) / 10 ** WmaticDecimals;
-  await swapInTargetProportion(WALLET_ADDRESS, WALLET_SECRET);
+  await errCatcher(swapInTargetProportion, [WALLET_ADDRESS, WALLET_SECRET]);
   UsdcAmount = await getTokenBalanceWallet(UsdcAddress, WALLET_ADDRESS);
-  await supply(UsdcAddress, UsdcAmount, 0, WALLET_ADDRESS, WALLET_SECRET);
+  await errCatcher(supply, [
+    UsdcAddress,
+    UsdcAmount,
+    0,
+    WALLET_ADDRESS,
+    WALLET_SECRET,
+  ]);
   let summary = await getUserSummary(WALLET_ADDRESS);
   let WmaticBorrow = ethers.utils.parseUnits(
-    (Number(summary.availableBorrowsUSD) / healthFactor / price).toString(),
+    (
+      Number((summary.totalLiquidityUSD / healthFactor) * 0.85) / price
+    ).toString(),
     WmaticDecimals
   );
-  await borrow(
+  await errCatcher(borrow, [
     WmaticAddress,
     WmaticBorrow,
     2,
     0,
     WALLET_ADDRESS,
-    WALLET_SECRET
-  );
+    WALLET_SECRET,
+  ]);
   console.log("AAVE borrowed");
-  await swapAndAdd(WALLET_ADDRESS, WALLET_SECRET);
+  await errCatcher(swapAndAdd, [WALLET_ADDRESS, WALLET_SECRET]);
   console.log("tokensSwapped");
   const dystopiarouter = new ethers.Contract(
     DystopiaRouterAddress,
@@ -171,6 +200,9 @@ async function runWithHedge(args) {
   console.log("LPtokensStaked");
 
   summary = await getUserSummary(WALLET_ADDRESS);
+  let maticBalance =
+    (await getTokenBalanceWallet(MaticAddress, WALLET_ADDRESS)) /
+    10 ** WmaticDecimals;
   await sheet.addRow({
     Time: Date(Date.now),
     UnixTime: Date.now(),
@@ -179,18 +211,31 @@ async function runWithHedge(args) {
     USDCAmount: tokensAmounts[1] / 10 ** UsdcDecimals,
     WMATICAmount: tokensAmounts[0] / 10 ** WmaticDecimals,
     CurrentPRICE: price,
-    Total: UsdcAmount / 10 ** UsdcDecimals + Number(summary.totalLiquidityUSD),
+    Total:
+      UsdcAmount / 10 ** UsdcDecimals +
+      Number(summary.totalLiquidityUSD) +
+      maticBalance * price,
   });
   while (true) {
     summary = await getUserSummary(WALLET_ADDRESS);
+
     if (Number(summary.healthFactor) - healthFactor > rebalancingDelta) {
       //надо взять еще с AAVE
       //await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
+      tokensAmounts = await calcLPTokensValue(
+        PoolToken,
+        dystopiarouterContract,
+        WALLET_ADDRESS
+      );
       let amountWithoutCollaterial = await getamountWithoutCollaterial(
         summary,
         tokensAmounts,
         price
       );
+      await errCatcher(removeLiquidityFromPool, [
+        WALLET_ADDRESS,
+        WALLET_SECRET,
+      ]);
       if (summary.totalLiquidityUSD >= amountWithoutCollaterial) {
         let WmaticBorrow = ethers.utils.parseUnits(
           (
@@ -201,14 +246,14 @@ async function runWithHedge(args) {
           ).toString(),
           WmaticDecimals
         );
-        await borrow(
+        await errCatcher(borrow, [
           WmaticAddress,
           WmaticBorrow,
           2,
           0,
           WALLET_ADDRESS,
-          WALLET_SECRET
-        );
+          WALLET_SECRET,
+        ]);
       } else {
         let UsdcWithdraw = ethers.utils.parseUnits(
           (
@@ -217,22 +262,32 @@ async function runWithHedge(args) {
           ).toString(),
           UsdcDecimals
         );
-        await withdraw(
+        await errCatcher(withdraw, [
           UsdcAddress,
           UsdcWithdraw,
           WALLET_ADDRESS,
-          WALLET_SECRET
-        );
+          WALLET_SECRET,
+        ]);
       }
+      await errCatcher(addAllLiquidity, [WALLET_ADDRESS, WALLET_SECRET]);
     }
     if (healthFactor - Number(summary.healthFactor) >= rebalancingDelta) {
       // Надо докинуть на AAVE
       //await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
+      tokensAmounts = await calcLPTokensValue(
+        PoolToken,
+        dystopiarouterContract,
+        WALLET_ADDRESS
+      );
       let amountWithoutCollaterial = await getamountWithoutCollaterial(
         summary,
         tokensAmounts,
         price
       );
+      await errCatcher(removeLiquidityFromPool, [
+        WALLET_ADDRESS,
+        WALLET_SECRET,
+      ]);
       if (summary.totalLiquidityUSD >= amountWithoutCollaterial) {
         let WmaticRepay = ethers.utils.parseUnits(
           (
@@ -243,13 +298,13 @@ async function runWithHedge(args) {
           ).toString(),
           WmaticDecimals
         );
-        await repay(
+        await errCatcher(repay, [
           WmaticAddress,
           WmaticRepay,
           2,
           WALLET_ADDRESS,
-          WALLET_SECRET
-        );
+          WALLET_SECRET,
+        ]);
       } else {
         let UsdcSupply = ethers.utils.parseUnits(
           (
@@ -258,10 +313,17 @@ async function runWithHedge(args) {
           ).toString(),
           UsdcDecimals
         );
-        await supply(UsdcAddress, UsdcSupply, 0, WALLET_ADDRESS, WALLET_SECRET);
+        await errCatcher(supply, [
+          UsdcAddress,
+          UsdcSupply,
+          0,
+          WALLET_ADDRESS,
+          WALLET_SECRET,
+        ]);
       }
+      await errCatcher(addAllLiquidity, [WALLET_ADDRESS, WALLET_SECRET]);
     }
-    if (Date.now() >= startTimestamp + 1000 * 3600 * interval) {
+    if (Date.now() >= startTimestamp + 1000 * 60 * interval) {
       console.log("it's time to withdraw");
       // await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
       // console.log("LP unstaked");
@@ -286,38 +348,39 @@ async function runWithHedge(args) {
       startTimestamp = Date.now();
       //await swapAndAdd(WALLET_ADDRESS, WALLET_SECRET);
       console.log("tokensSwapped");
-      tokensAmounts = await calcLPTokensValue(
-        PoolToken,
-        dystopiarouterContract,
-        WALLET_ADDRESS
-      );
+
       //await errCatcher(depositLpAndStake, [wallet]);
       console.log("LPtokensStaked");
-
-      price = await getCurrentPrice(
-        UsdcAddress,
-        WmaticAddress,
-        UsdcDecimals,
-        WmaticDecimals,
-        wallet
-      );
-      let LPValue =
-        tokensAmounts[1] / 10 ** UsdcDecimals +
-        (tokensAmounts[0] / 10 ** WmaticDecimals) * price;
-      summary = await getUserSummary(WALLET_ADDRESS);
-      await sheet.addRow({
-        Time: Date(Date.now),
-        UnixTime: Date.now(),
-        AAVECollateral: summary.totalLiquidityUSD,
-        HealthFactor: summary.healthFactor,
-        USDCAmount: tokensAmounts[1] / 10 ** UsdcDecimals,
-        WMATICAmount: tokensAmounts[0] / 10 ** WmaticDecimals,
-        CurrentPRICE: price,
-        Total:
-          (await getamountWithoutCollaterial(summary, tokensAmounts, price)) +
-          Number(summary.totalLiquidityUSD),
-      });
     }
+    tokensAmounts = await calcLPTokensValue(
+      PoolToken,
+      dystopiarouterContract,
+      WALLET_ADDRESS
+    );
+    price = await getCurrentPrice(
+      UsdcAddress,
+      WmaticAddress,
+      UsdcDecimals,
+      WmaticDecimals,
+      wallet
+    );
+    summary = await getUserSummary(WALLET_ADDRESS);
+    maticBalance =
+      (await getTokenBalanceWallet(MaticAddress, WALLET_ADDRESS)) /
+      10 ** WmaticDecimals;
+    await sheet.addRow({
+      Time: Date(Date.now),
+      UnixTime: Date.now(),
+      AAVECollateral: summary.totalLiquidityUSD,
+      HealthFactor: summary.healthFactor,
+      USDCAmount: tokensAmounts[1] / 10 ** UsdcDecimals,
+      WMATICAmount: tokensAmounts[0] / 10 ** WmaticDecimals,
+      CurrentPRICE: price,
+      Total:
+        (await getamountWithoutCollaterial(summary, tokensAmounts, price)) +
+        Number(summary.totalLiquidityUSD) +
+        maticBalance * price,
+    });
     await timer(60000);
   }
 }
@@ -325,10 +388,16 @@ async function runWithHedge(args) {
 async function cringeTests(args) {
   WALLET_SECRET = args[0];
   const wallet = new ethers.Wallet(WALLET_SECRET, web3Provider);
-  await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
+  //await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
+  const balance = await getTokenBalanceWallet(
+    MaticAddress,
+    "0x5Ef9B6b6Ca7066F428E8D966F4fdf3ACa3B0498d"
+  );
+  console.log(balance);
 }
 
-cringeTests(args);
+//cringeTests(args);
 
 //runNoHedge(args);
-//runWithHedge(args);
+runWithHedge(args);
+//allApproves(args);
