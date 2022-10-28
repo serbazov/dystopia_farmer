@@ -351,37 +351,38 @@ async function runWithHedge(args) {
 
       await errCatcher(depositLpAndStake, [wallet]);
       console.log("LPtokensStaked");
+
+      tokensAmounts = await calcLPTokensValue(
+        PoolToken,
+        dystopiarouterContract,
+        WALLET_ADDRESS
+      );
+      price = await getCurrentPrice(
+        UsdcAddress,
+        WmaticAddress,
+        UsdcDecimals,
+        WmaticDecimals,
+        wallet
+      );
+      summary = await getUserSummary(WALLET_ADDRESS);
+      maticBalance =
+        (await getTokenBalanceWallet(MaticAddress, WALLET_ADDRESS)) /
+        10 ** WmaticDecimals;
+      await sheet.addRow({
+        Time: Date(Date.now),
+        UnixTime: Date.now(),
+        AAVECollateral: summary.totalLiquidityUSD,
+        HealthFactor: summary.healthFactor,
+        USDCAmount: tokensAmounts[1] / 10 ** UsdcDecimals,
+        WMATICAmount: tokensAmounts[0] / 10 ** WmaticDecimals,
+        CurrentPRICE: price,
+        Total:
+          (await getamountWithoutCollaterial(summary, tokensAmounts, price)) +
+          Number(summary.totalLiquidityUSD) +
+          maticBalance * price,
+      });
     }
-    tokensAmounts = await calcLPTokensValue(
-      PoolToken,
-      dystopiarouterContract,
-      WALLET_ADDRESS
-    );
-    price = await getCurrentPrice(
-      UsdcAddress,
-      WmaticAddress,
-      UsdcDecimals,
-      WmaticDecimals,
-      wallet
-    );
-    summary = await getUserSummary(WALLET_ADDRESS);
-    maticBalance =
-      (await getTokenBalanceWallet(MaticAddress, WALLET_ADDRESS)) /
-      10 ** WmaticDecimals;
-    await sheet.addRow({
-      Time: Date(Date.now),
-      UnixTime: Date.now(),
-      AAVECollateral: summary.totalLiquidityUSD,
-      HealthFactor: summary.healthFactor,
-      USDCAmount: tokensAmounts[1] / 10 ** UsdcDecimals,
-      WMATICAmount: tokensAmounts[0] / 10 ** WmaticDecimals,
-      CurrentPRICE: price,
-      Total:
-        (await getamountWithoutCollaterial(summary, tokensAmounts, price)) +
-        Number(summary.totalLiquidityUSD) +
-        maticBalance * price,
-    });
-    await timer(60000);
+    await timer(120000);
   }
 }
 
