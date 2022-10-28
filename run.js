@@ -308,7 +308,7 @@ async function runWithHedge(args) {
       } else {
         let UsdcSupply = ethers.utils.parseUnits(
           (
-            Number(summary.totalBorrowsUSD) * healthFactor * 0.8 -
+            Number(summary.totalBorrowsUSD) * healthFactor * 0.85 -
             Number(summary.totalCollateralUSD)
           ).toString(),
           UsdcDecimals
@@ -323,7 +323,7 @@ async function runWithHedge(args) {
       }
       await errCatcher(addAllLiquidity, [WALLET_ADDRESS, WALLET_SECRET]);
     }
-    if (Date.now() >= startTimestamp + 1000 * 60 * interval) {
+    if (Date.now() >= startTimestamp + 1000 * 3600 * 24 * interval) {
       console.log("it's time to withdraw");
       await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
       console.log("LP unstaked");
