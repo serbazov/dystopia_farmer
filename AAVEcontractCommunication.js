@@ -1,6 +1,6 @@
 const { ethers, BigNumber } = require("ethers");
 const JSBI = require("jsbi"); // jsbi@3.2.5
-const { getGasPrice } = require("./utils.js");
+const { getGasPrice } = require("./Utilities.js");
 const PoolABI = require("./abi/AAVEPoolABI.json");
 const ERC20ABI = require("./abi/ERC20ABI.json");
 const wethABI = require("./abi/WETHGatewayABI.json");

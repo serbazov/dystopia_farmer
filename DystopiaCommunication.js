@@ -12,7 +12,7 @@ const {
   getTokenBalanceWallet,
   getTotalTokenSupply,
   approveToken,
-} = require("./Utils");
+} = require("./Utilities");
 const web3Provider = new ethers.providers.StaticJsonRpcProvider(
   "https://polygon-mainnet.g.alchemy.com/v2/6aCuWP8Oxcd-4jvmNYLh-WervViwIeJq",
   ChainId.polygon

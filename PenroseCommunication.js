@@ -2,7 +2,7 @@ const ERC20ABI = require("./abi/ERC20ABI.json");
 const UserProxyInterfaceABI = require("./abi/PenroseUserProxyInterfaceABI.json");
 const { ethers, BigNumber } = require("ethers");
 const { ChainId } = require("@aave/contract-helpers");
-const { approveToken, getGasPrice } = require("./Utils");
+const { approveToken, getGasPrice } = require("./Utilities");
 const web3Provider = new ethers.providers.StaticJsonRpcProvider(
   "https://polygon-mainnet.g.alchemy.com/v2/6aCuWP8Oxcd-4jvmNYLh-WervViwIeJq",
   ChainId.polygon

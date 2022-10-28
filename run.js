@@ -32,7 +32,7 @@ const {
   getTokenBalanceWallet,
   getCurrentPrice,
   approveToken,
-} = require("./Utils");
+} = require("./Utilities");
 const MaticAddress = "0x0000000000000000000000000000000000001010".toLowerCase();
 const PenAddress = "0x9008D70A5282a936552593f410AbcBcE2F891A97".toLowerCase();
 const DystAddress = "0x39aB6574c289c3Ae4d88500eEc792AB5B947A5Eb".toLowerCase();
