@@ -104,7 +104,7 @@ async function swapToken1ToToken2(
   await dystopiarouterContract
     .swapExactTokensForTokensSimple(
       amount,
-      ExpectedAmount.mul(98).div(100),
+      ExpectedAmount,
       Token1address,
       Token2address,
       true,
@@ -168,11 +168,11 @@ async function swapInTargetProportion(WALLET_ADDRESS, WALLET_SECRET) {
     .add(Token1WalletAmount);
 
   const Token1Swap = TokensLiquidity.div(2).sub(Token1WalletAmount);
-  const maxSlippageCoeff = 10;
+  const maxSlippageCoeff = 1;
   const currentTimestamp = Date.now();
   //TODO: minswap ERROR
   if (Token1Swap.lt(0)) {
-    const Token2ExpectedAmount = Token1Swap.mul(-1)
+    let Token2ExpectedAmount = Token1Swap.mul(-1)
       .mul(reserves[1])
       .div(reserves[0])
       .mul(100 - maxSlippageCoeff)
@@ -185,7 +185,7 @@ async function swapInTargetProportion(WALLET_ADDRESS, WALLET_SECRET) {
       true
     );
     if (Token2ExpectedAmount.gt(ExpectedAmount)) {
-      Token2ExpectedAmount = Token2ExpectedAmount.mul(95).div(100);
+      Token2ExpectedAmount = Token2ExpectedAmount.mul(98).div(100);
     }
 
     await dystopiarouterContract
@@ -209,7 +209,7 @@ async function swapInTargetProportion(WALLET_ADDRESS, WALLET_SECRET) {
 
     const Token2Swap = TokensLiquidity.div(2).sub(Token2WalletAmount);
 
-    const Token1ExpectedAmount = Token2Swap.mul(-1)
+    let Token1ExpectedAmount = Token2Swap.mul(-1)
       .mul(reserves[0])
       .div(reserves[1])
       .mul(100 - maxSlippageCoeff)
@@ -222,7 +222,7 @@ async function swapInTargetProportion(WALLET_ADDRESS, WALLET_SECRET) {
       true
     );
     if (Token1ExpectedAmount.gt(ExpectedAmount)) {
-      Token1ExpectedAmount = Token1ExpectedAmount.mul(95).div(100);
+      Token1ExpectedAmount = Token1ExpectedAmount.mul(99).div(100);
     }
     await dystopiarouterContract
       .swapExactTokensForTokensSimple(
