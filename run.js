@@ -434,6 +434,7 @@ async function runWithHedge(args) {
 async function cringeTests(args) {
   WALLET_ADDRESS = args[0];
   WALLET_SECRET = args[1];
+  const wallet = new ethers.Wallet(WALLET_SECRET, web3Provider);
   //await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
   // await swapToken1ToToken2(
   //   PenAddress,
@@ -442,7 +443,8 @@ async function cringeTests(args) {
   //   wallet,
   //   WALLET_ADDRESS
   // );
-  await swapAndAdd(WALLET_ADDRESS, WALLET_SECRET);
+  await errCatcher(depositLpAndStake, [wallet]);
+  //await swapAndAdd(WALLET_ADDRESS, WALLET_SECRET);
   //onsole.log(balance);
 }
 
