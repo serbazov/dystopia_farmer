@@ -412,6 +412,13 @@ async function runWithHedge(args) {
       await swapAndAdd(WALLET_ADDRESS, WALLET_SECRET);
       console.log("tokensSwapped");
 
+      const dystopiarouter = new ethers.Contract(
+        DystopiaRouterAddress,
+        DystopiaRouterABI,
+        web3Provider
+      );
+      const dystopiarouterContract = dystopiarouter.connect(wallet);
+
       tokensAmounts = await calcLPTokensValue(
         PoolToken,
         dystopiarouterContract,
