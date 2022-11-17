@@ -32,6 +32,7 @@ const {
   getTokenBalanceWallet,
   getCurrentPrice,
   approveToken,
+  getGasPrice,
 } = require("./Utilities");
 const MaticAddress = "0x0000000000000000000000000000000000001010".toLowerCase();
 const PenAddress = "0x9008D70A5282a936552593f410AbcBcE2F891A97".toLowerCase();
