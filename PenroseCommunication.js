@@ -14,19 +14,8 @@ const PoolToken = "0x60c088234180b36EDcec7AA8Aa23912Bb6bed114".toLowerCase(); //
 const PenroseProxy = "0xc9Ae7Dac956f82074437C6D40f67D6a5ABf3E34b".toLowerCase();
 const timer = (ms) => new Promise((res) => setTimeout(res, ms));
 
-async function gasPriceAwaiter() {
-  let gasPrice = await getGasPrice();
-  while (gasPrice / 10 ** 9 > 60) {
-    console.log(gasPrice / 10 ** 9 + "gwei");
-    console.log("waiting for normal gas price");
-    await timer(180000);
-    gasPrice = await getGasPrice();
-  }
-  return gasPrice;
-}
-
 async function depositLpAndStake(wallet) {
-  let gasPrice = await gasPriceAwaiter();
+  let gasPrice = await getGasPrice();
   //approveToken(PoolToken, PenroseProxy, wallet);
   const PenroseCommunication = new ethers.Contract(
     PenroseProxy,
@@ -46,7 +35,7 @@ async function depositLpAndStake(wallet) {
 }
 
 async function unstakeLpWithdrawAndClaim(wallet) {
-  let gasPrice = await gasPriceAwaiter();
+  let gasPrice = await getGasPrice();
   //approveToken(PoolToken, PenroseProxy, wallet);
 
   const PenroseCommunication = new ethers.Contract(

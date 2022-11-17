@@ -73,6 +73,20 @@ async function getamountWithoutCollaterial(summary, tokensAmounts, price) {
   );
 }
 
+async function gasPriceAwaiter(WALLET_ADDRESS) {
+  let summary = await getUserSummary(WALLET_ADDRESS);
+  let gasPrice = await getGasPrice();
+  while (gasPrice / 10 ** 9 > 60 || summary.healthFactor >= 1.04) {
+    console.log(gasPrice / 10 ** 9 + "gwei");
+    console.log("waiting for normal gas price");
+    await timer(180000);
+    summary = await getUserSummary(WALLET_ADDRESS);
+    gasPrice = await getGasPrice();
+  }
+  gasPrice = await getGasPrice();
+  return gasPrice;
+}
+
 async function saveDataToSheets(
   wallet,
   sheet,
@@ -244,7 +258,9 @@ async function runWithHedge(args) {
   }
   while (true) {
     summary = await getUserSummary(WALLET_ADDRESS);
+    let gas = await gasPriceAwaiter(WALLET_ADDRESS);
     if (Number(summary.healthFactor) - healthFactor >= rebalancingDelta) {
+      console.log("it's time to rebalance");
       //надо взять еще с AAVE
       await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
       const dystopiarouter = new ethers.Contract(
@@ -316,6 +332,7 @@ async function runWithHedge(args) {
       await errCatcher(depositLpAndStake, [wallet]);
     }
     if (healthFactor - Number(summary.healthFactor) >= rebalancingDelta) {
+      console.log("it's time to rebalance");
       // Надо докинуть на AAVE
       await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
       const dystopiarouter = new ethers.Contract(
@@ -434,6 +451,7 @@ async function runWithHedge(args) {
         WALLET_ADDRESS
       );
     }
+    console.log("awaiting");
     await timer(120000);
   }
 }
