@@ -77,12 +77,16 @@ async function getamountWithoutCollaterial(summary, tokensAmounts, price) {
 async function gasPriceAwaiter(WALLET_ADDRESS) {
   let summary = await getUserSummary(WALLET_ADDRESS);
   let gasPrice = await getGasPrice();
-  while (gasPrice / 10 ** 9 > 60 || summary.healthFactor >= 1.04) {
+  while (gasPrice / 10 ** 9 > 60) {
     console.log(gasPrice / 10 ** 9 + "gwei");
     console.log("waiting for normal gas price");
     await timer(180000);
     summary = await getUserSummary(WALLET_ADDRESS);
     gasPrice = await getGasPrice();
+    if (summary.healthFactor >= 1.04) {
+      console.log("Health factor is critical, rebalance immideatly");
+      break;
+    }
   }
   gasPrice = await getGasPrice();
   return gasPrice;
