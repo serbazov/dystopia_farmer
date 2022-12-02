@@ -37,7 +37,8 @@ const PoolToken = "0x60c088234180b36edcec7aa8aa23912bb6bed114".toLowerCase(); //
 
 const Tocken1 = "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270".toLowerCase(); //Wmatic
 const TOCKEN1DECIMALS = 18;
-const Tocken2 = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174".toLowerCase(); //Usdc
+//const Tocken2 = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174".toLowerCase(); //Usdc
+const Tocken2 = "0x236eeC6359fb44CCe8f97E99387aa7F8cd5cdE1f".toLowerCase();
 const TOCKEN2DECIMALS = 6;
 
 async function calcLPTokensValue(
@@ -94,20 +95,19 @@ async function swapToken1ToToken2(
   );
   const gasPrice = await getGasPrice();
   const dystopiarouterContract = dystopiarouter.connect(wallet);
-  const ExpectedAmount = await dystopiarouterContract.getExactAmountOut(
+  const BestChange = await dystopiarouterContract.getAmountOut(
     amount,
     Token1address,
-    Token2address,
-    true
+    Token2address
   );
   const currentTimestamp = Date.now();
   await dystopiarouterContract
     .swapExactTokensForTokensSimple(
       amount,
-      ExpectedAmount,
+      BestChange.amount,
       Token1address,
       Token2address,
-      true,
+      BestChange.stable,
       WALLET_ADDRESS,
       currentTimestamp + 60,
       { gasPrice: gasPrice, gasLimit: BigNumber.from("500000") }
@@ -178,23 +178,23 @@ async function swapInTargetProportion(WALLET_ADDRESS, WALLET_SECRET) {
       .mul(100 - maxSlippageCoeff)
       .div(100);
 
-    const ExpectedAmount = await dystopiarouterContract.getExactAmountOut(
+    const BestChange = await dystopiarouterContract.getAmountOut(
       Token1Swap.mul(-1),
       Tocken1,
-      Tocken2,
-      true
+      Tocken2
     );
-    if (Token2ExpectedAmount.gt(ExpectedAmount)) {
+
+    if (Token2ExpectedAmount.gt(BestChange.amount)) {
       Token2ExpectedAmount = Token2ExpectedAmount.mul(98).div(100);
     }
 
     await dystopiarouterContract
       .swapExactTokensForTokensSimple(
         Token1Swap.mul(-1),
-        Token2ExpectedAmount,
+        BestChange.amount,
         Tocken1,
         Tocken2,
-        true,
+        BestChange.stable,
         WALLET_ADDRESS,
         currentTimestamp + 60,
         { gasPrice: gasPrice, gasLimit: BigNumber.from("500000") }
@@ -215,22 +215,21 @@ async function swapInTargetProportion(WALLET_ADDRESS, WALLET_SECRET) {
       .mul(100 - maxSlippageCoeff)
       .div(100);
 
-    const ExpectedAmount = await dystopiarouterContract.getExactAmountOut(
+    const BestChange = await dystopiarouterContract.getAmountOut(
       Token2Swap.mul(-1),
       Tocken2,
-      Tocken1,
-      true
+      Tocken1
     );
-    if (Token1ExpectedAmount.gt(ExpectedAmount)) {
+    if (Token1ExpectedAmount.gt(BestChange.amount)) {
       Token1ExpectedAmount = Token1ExpectedAmount.mul(99).div(100);
     }
     await dystopiarouterContract
       .swapExactTokensForTokensSimple(
         Token2Swap.mul(-1),
-        Token1ExpectedAmount,
+        BestChange.amount,
         Tocken2,
         Tocken1,
-        true,
+        BestChange.stable,
         WALLET_ADDRESS,
         currentTimestamp + 60,
         { gasPrice: gasPrice, gasLimit: BigNumber.from("500000") }

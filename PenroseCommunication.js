@@ -10,7 +10,8 @@ const web3Provider = new ethers.providers.StaticJsonRpcProvider(
 const DystopiaPoolAddress =
   "0x60c088234180b36EDcec7AA8Aa23912Bb6bed114".toLowerCase();
 //const PoolToken = "0x421a018cC5839c4C0300AfB21C725776dc389B1a".toLowerCase(); //Usd+/Usdc pool token
-const PoolToken = "0x60c088234180b36EDcec7AA8Aa23912Bb6bed114".toLowerCase(); //WMATIC/USDC pool token
+//const PoolToken = "0x60c088234180b36EDcec7AA8Aa23912Bb6bed114".toLowerCase(); //WMATIC/USDC pool token
+const PoolToken = "0x1A5FEBA5D5846B3b840312Bd04D76ddaa6220170".toLowerCase(); //v-Wmatic/usd+
 const PenroseProxy = "0xc9Ae7Dac956f82074437C6D40f67D6a5ABf3E34b".toLowerCase();
 const timer = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -25,7 +26,7 @@ async function depositLpAndStake(wallet) {
   const penroseContract = PenroseCommunication.connect(wallet);
 
   return await penroseContract
-    .depositLpAndStake(DystopiaPoolAddress, {
+    .depositLpAndStake(PoolToken, {
       gasPrice: gasPrice,
       gasLimit: BigNumber.from("5000000"),
     })
@@ -46,7 +47,7 @@ async function unstakeLpWithdrawAndClaim(wallet) {
   const penroseContract = PenroseCommunication.connect(wallet);
 
   return await penroseContract
-    .unstakeLpWithdrawAndClaim(DystopiaPoolAddress, {
+    .unstakeLpWithdrawAndClaim(PoolToken, {
       gasPrice: gasPrice,
       gasLimit: BigNumber.from("5000000"),
     })

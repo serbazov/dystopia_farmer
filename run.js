@@ -39,12 +39,16 @@ const PenAddress = "0x9008D70A5282a936552593f410AbcBcE2F891A97".toLowerCase();
 const DystAddress = "0x39aB6574c289c3Ae4d88500eEc792AB5B947A5Eb".toLowerCase();
 const UsdcAddress = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174".toLowerCase(); //Usdc
 const UsdcDecimals = 6;
+const UsdplusDecimals = 6;
 const WmaticAddress =
   "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270".toLowerCase(); //Wmatic
 const DystopiaRouterAddress =
   "0xbE75Dd16D029c6B32B7aD57A0FD9C1c20Dd2862e".toLowerCase();
+const UsdplusAddress =
+  "0x236eeC6359fb44CCe8f97E99387aa7F8cd5cdE1f".toLowerCase();
 const WmaticDecimals = 18;
-const PoolToken = "0x60c088234180b36edcec7aa8aa23912bb6bed114".toLowerCase(); //Usdc/Wmatic pool token
+//const PoolToken = "0x60c088234180b36edcec7aa8aa23912bb6bed114".toLowerCase(); //Usdc/Wmatic pool token
+const PoolToken = "0x1A5FEBA5D5846B3b840312Bd04D76ddaa6220170".toLowerCase(); //v-Wmatic/usd+
 const PenroseProxy = "0xc9Ae7Dac956f82074437C6D40f67D6a5ABf3E34b".toLowerCase();
 const doc = new GoogleSpreadsheet(
   "1MFJqjSj6DAdhLygLoxp39aFm8iVshRyWnPm9W9IWjdo"
@@ -83,7 +87,7 @@ async function gasPriceAwaiter(WALLET_ADDRESS) {
     await timer(180000);
     summary = await getUserSummary(WALLET_ADDRESS);
     gasPrice = await getGasPrice();
-    if (summary.healthFactor >= 1.04) {
+    if (summary.healthFactor <= 1.04) {
       console.log("Health factor is critical, rebalance immideatly");
       break;
     }
@@ -100,7 +104,7 @@ async function saveDataToSheets(
   WALLET_ADDRESS
 ) {
   price = await getCurrentPrice(
-    UsdcAddress,
+    UsdplusAddress,
     WmaticAddress,
     UsdcDecimals,
     WmaticDecimals,
@@ -115,7 +119,7 @@ async function saveDataToSheets(
     UnixTime: Date.now(),
     AAVECollateral: summary.totalLiquidityUSD,
     HealthFactor: summary.healthFactor,
-    USDCAmount: tokensAmounts[1] / 10 ** UsdcDecimals,
+    USDplusAmount: tokensAmounts[1] / 10 ** UsdcDecimals,
     WMATICAmount: tokensAmounts[0] / 10 ** WmaticDecimals,
     CurrentPRICE: price,
     Total:
@@ -164,6 +168,7 @@ async function runNoHedge(args) {
 async function allApproves(args) {
   const WALLET_SECRET = args[0];
   const wallet = new ethers.Wallet(WALLET_SECRET, web3Provider);
+  await approveToken(UsdplusAddress, DystopiaRouterAddress, wallet);
   await approveToken(UsdcAddress, AAVEpoolAddress, wallet);
   await approveToken(WmaticAddress, AAVEpoolAddress, wallet);
   await approveToken(PoolToken, DystopiaRouterAddress, wallet);
@@ -183,18 +188,21 @@ async function runWithHedge(args) {
   const interval = args[2];
   const WALLET_ADDRESS = args[3];
   const WALLET_SECRET = args[4];
-  const working_script = Boolean(args[5]);
+  const working_script = Boolean(Number(args[5]));
   const wallet = new ethers.Wallet(WALLET_SECRET, web3Provider);
   let startTimestamp = Date.now();
-  let UsdcAmount = await getTokenBalanceWallet(UsdcAddress, WALLET_ADDRESS);
+  let UsdplusAmount = await getTokenBalanceWallet(
+    UsdplusAddress,
+    WALLET_ADDRESS
+  );
   const WmaticAmount = await getTokenBalanceWallet(
     WmaticAddress,
     WALLET_ADDRESS
   );
   let price = await getCurrentPrice(
-    UsdcAddress,
+    UsdplusAddress,
     WmaticAddress,
-    UsdcDecimals,
+    UsdplusDecimals,
     WmaticDecimals,
     wallet
   );
@@ -205,7 +213,7 @@ async function runWithHedge(args) {
       "UnixTime",
       "AAVECollateral",
       "HealthFactor",
-      "USDCAmount",
+      "USDplusAmount",
       "WMATICAmount",
       "CurrentPRICE",
       "Total",
@@ -213,7 +221,15 @@ async function runWithHedge(args) {
   });
   if (working_script == false) {
     await errCatcher(swapInTargetProportion, [WALLET_ADDRESS, WALLET_SECRET]);
-    UsdcAmount = await getTokenBalanceWallet(UsdcAddress, WALLET_ADDRESS);
+    UsdplusAmount = await getTokenBalanceWallet(UsdplusAddress, WALLET_ADDRESS);
+    await errCatcher(swapToken1ToToken2, [
+      UsdplusAddress,
+      UsdcAddress,
+      UsdplusAmount,
+      wallet,
+      WALLET_ADDRESS,
+    ]);
+    let UsdcAmount = await getTokenBalanceWallet(UsdcAddress, WALLET_ADDRESS);
     await errCatcher(supply, [
       UsdcAddress,
       UsdcAmount,
@@ -279,6 +295,13 @@ async function runWithHedge(args) {
         dystopiarouterContract,
         WALLET_ADDRESS
       );
+      price = await getCurrentPrice(
+        UsdplusAddress,
+        WmaticAddress,
+        UsdplusDecimals,
+        WmaticDecimals,
+        wallet
+      );
       let amountWithoutCollaterial = await getamountWithoutCollaterial(
         summary,
         tokensAmounts,
@@ -319,6 +342,14 @@ async function runWithHedge(args) {
           WALLET_ADDRESS,
           WALLET_SECRET,
         ]);
+        UsdcAmount = await getTokenBalanceWallet(UsdcAddress, WALLET_ADDRESS);
+        await errCatcher(swapToken1ToToken2, [
+          UsdcAddress,
+          UsdplusAddress,
+          UsdcAmount,
+          wallet,
+          WALLET_ADDRESS,
+        ]);
       }
       summary = await getUserSummary(WALLET_ADDRESS);
       await errCatcher(swapAndAdd, [WALLET_ADDRESS, WALLET_SECRET]);
@@ -350,6 +381,13 @@ async function runWithHedge(args) {
         PoolToken,
         dystopiarouterContract,
         WALLET_ADDRESS
+      );
+      price = await getCurrentPrice(
+        UsdplusAddress,
+        WmaticAddress,
+        UsdplusDecimals,
+        WmaticDecimals,
+        wallet
       );
       let amountWithoutCollaterial = await getamountWithoutCollaterial(
         summary,
@@ -384,9 +422,17 @@ async function runWithHedge(args) {
           ).toFixed(UsdcDecimals),
           UsdcDecimals
         );
-        await errCatcher(supply, [
+        await errCatcher(swapToken1ToToken2, [
+          UsdplusAddress,
           UsdcAddress,
           UsdcSupply,
+          wallet,
+          WALLET_ADDRESS,
+        ]);
+        UsdcAmount = await getTokenBalanceWallet(UsdcAddress, WALLET_ADDRESS);
+        await errCatcher(supply, [
+          UsdcAddress,
+          UsdcAmount,
           0,
           WALLET_ADDRESS,
           WALLET_SECRET,
@@ -408,26 +454,26 @@ async function runWithHedge(args) {
       );
       await errCatcher(depositLpAndStake, [wallet]);
     }
-    if (Date.now() >= startTimestamp + 1000 * 3600 * 24 * interval) {
+    if (Date.now() >= startTimestamp + 1000 * 60 * 60 * 24 * interval) {
       console.log("it's time to withdraw");
       await errCatcher(unstakeLpWithdrawAndClaim, [wallet]);
       console.log("LP unstaked");
       let amountDyst = await getTokenBalanceWallet(DystAddress, WALLET_ADDRESS);
       let amountPen = await getTokenBalanceWallet(PenAddress, WALLET_ADDRESS);
-      await swapToken1ToToken2(
+      await errCatcher(swapToken1ToToken2, [
         DystAddress,
         WmaticAddress,
         amountDyst,
         wallet,
-        WALLET_ADDRESS
-      );
-      await swapToken1ToToken2(
+        WALLET_ADDRESS,
+      ]);
+      await errCatcher(swapToken1ToToken2, [
         PenAddress,
         WmaticAddress,
         amountPen,
         wallet,
-        WALLET_ADDRESS
-      );
+        WALLET_ADDRESS,
+      ]);
       console.log("ShitCoinsSwapped");
       await claimFeesReward(wallet);
       startTimestamp = Date.now();
