@@ -111,16 +111,8 @@ async function getUserSummary(WALLET_ADDRESS) {
   });
 }
 
-async function supply(
-  assetAddress,
-  amount,
-  referralCode,
-  WALLET_ADDRESS,
-  WALLET_SECRET
-) {
+async function supply(assetAddress, amount, referralCode, wallet) {
   const gasPrice = getGasPrice(gasPriceUrl);
-
-  const wallet = new ethers.Wallet(WALLET_SECRET, web3Provider);
 
   const pool = new ethers.Contract(AAVEpoolAddress, PoolABI, web3Provider);
   const poolContract = pool.connect(wallet);
@@ -158,12 +150,9 @@ async function borrow(
   amount,
   interestRateMode,
   referralCode,
-  WALLET_ADDRESS,
-  WALLET_SECRET
+  wallet
 ) {
   const gasPrice = getGasPrice(gasPriceUrl);
-
-  const wallet = new ethers.Wallet(WALLET_SECRET, web3Provider);
 
   const pool = new ethers.Contract(AAVEpoolAddress, PoolABI, web3Provider);
   const poolContract = pool.connect(wallet);
