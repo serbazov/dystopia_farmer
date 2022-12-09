@@ -69,10 +69,24 @@ async function approveToken(TokenAddress, ContractAddress, ConnectedWallet) {
       return transaction.wait();
     });
 }
+
+async function errCatcher(f, arguments) {
+  doLoop = true;
+  do {
+    try {
+      return await f.apply(this, arguments);
+    } catch (err) {
+      console.log(err);
+      await timer(180000);
+    }
+  } while (doLoop);
+}
+
 module.exports = {
   getGasPrice,
   getTokenBalanceWallet,
   getTotalTokenSupply,
   approveToken,
   getCurrentPrice,
+  errCatcher,
 };

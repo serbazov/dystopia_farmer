@@ -135,11 +135,8 @@ async function claimFeesReward(wallet) {
     });
 }
 
-async function swapInTargetProportion(WALLET_ADDRESS, WALLET_SECRET) {
+async function swapInTargetProportion(WALLET_ADDRESS, wallet, token1, token2) {
   const gasPrice = await getGasPrice();
-  const wallet = new ethers.Wallet(WALLET_SECRET, web3Provider);
-
-  //approveToken(Tocken1, DystopiaRouterAddress, wallet);
 
   const dystopiarouter = new ethers.Contract(
     DystopiaRouterAddress,
@@ -149,17 +146,17 @@ async function swapInTargetProportion(WALLET_ADDRESS, WALLET_SECRET) {
 
   const dystopiarouterContract = dystopiarouter.connect(wallet);
   const Token1WalletAmount = await getTokenBalanceWallet(
-    Tocken1,
+    token1,
     WALLET_ADDRESS
   );
   const Token2WalletAmount = await getTokenBalanceWallet(
-    Tocken2,
+    token2,
     WALLET_ADDRESS
   );
 
   const reserves = await dystopiarouterContract.getReserves(
-    Tocken1,
-    Tocken2,
+    token1,
+    token2,
     false
   );
 
@@ -180,8 +177,8 @@ async function swapInTargetProportion(WALLET_ADDRESS, WALLET_SECRET) {
 
     const BestChange = await dystopiarouterContract.getAmountOut(
       Token1Swap.mul(-1),
-      Tocken1,
-      Tocken2
+      token1,
+      token2
     );
 
     if (Token2ExpectedAmount.gt(BestChange.amount)) {
@@ -192,8 +189,8 @@ async function swapInTargetProportion(WALLET_ADDRESS, WALLET_SECRET) {
       .swapExactTokensForTokensSimple(
         Token1Swap.mul(-1),
         BestChange.amount,
-        Tocken1,
-        Tocken2,
+        token1,
+        token2,
         BestChange.stable,
         WALLET_ADDRESS,
         currentTimestamp + 60,
